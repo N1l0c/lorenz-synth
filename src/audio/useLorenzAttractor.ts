@@ -4,6 +4,14 @@ import * as Tone from "tone";
 type Attractor = { x: number; y: number; z: number };
 const sigma = 10, rho = 28, beta = 8 / 3, dt = 0.01;
 
+function getQuantizedFreq(x: number, voice: 'bass' | 'alto' | 'soprano') {
+  const scale = [0, 2, 3, 5, 7, 8, 11]; // Harmonic minor or Dorian feel
+  const base = voice === 'bass' ? 36 : voice === 'alto' ? 48 : 60; // MIDI: C2, C3, C4
+  const pos = Math.floor(((x + 30) / 60) * scale.length);
+  const midi = base + scale[pos % scale.length];
+  return Tone.Frequency(midi, "midi").toFrequency();
+}
+
 export function useLorenzAttractor(count: number) {
   const attractorRef = useRef<Attractor[]>(
     Array.from({ length: count }, () => ({
@@ -34,7 +42,8 @@ export function useLorenzAttractor(count: number) {
       a.y += dy * dt;
       a.z += dz * dt;
 
-      const freq = 220 + ((a.x + 30) / 60) * 660;
+      const voice: 'bass' | 'alto' | 'soprano' = i === 0 ? 'bass' : i === 1 ? 'alto' : 'soprano';
+      const freq = getQuantizedFreq(a.x, voice);
       const pan = Math.max(-1, Math.min(1, a.y / 30));
 
       const synth = synths.current[i];
