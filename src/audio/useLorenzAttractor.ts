@@ -1,16 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as Tone from "tone";
 
-export type Attractor = {
-  x: number;
-  y: number;
-  z: number;
-};
-
-const sigma = 10;
-const rho = 28;
-const beta = 8 / 3;
-const dt = 0.01;
+type Attractor = { x: number; y: number; z: number };
+const sigma = 10, rho = 28, beta = 8 / 3, dt = 0.01;
 
 export function useLorenzAttractor(count: number) {
   const attractorRef = useRef<Attractor[]>(
@@ -26,17 +18,11 @@ export function useLorenzAttractor(count: number) {
   useEffect(() => {
     synths.current = attractorRef.current.map(() => {
       const panVol = new Tone.PanVol().toDestination();
-      const osc = new Tone.Oscillator({
-        frequency: 440,
-        type: "sine",
-      }).connect(panVol);
-      osc.start();
+      const osc = new Tone.Oscillator({ frequency: 440, type: "sine" }).connect(panVol);
       return osc;
     });
 
-    return () => {
-      synths.current.forEach(osc => osc.dispose());
-    };
+    return () => synths.current.forEach((osc) => osc.dispose());
   }, []);
 
   const update = () => {
@@ -44,7 +30,6 @@ export function useLorenzAttractor(count: number) {
       const dx = sigma * (a.y - a.x);
       const dy = a.x * (rho - a.z) - a.y;
       const dz = a.x * a.y - beta * a.z;
-
       a.x += dx * dt;
       a.y += dy * dt;
       a.z += dz * dt;
@@ -62,5 +47,13 @@ export function useLorenzAttractor(count: number) {
     });
   };
 
-  return { attractors: attractorRef.current, update };
+  const startOscillators = () => {
+    synths.current.forEach((osc) => {
+      if (!osc.state || osc.state !== "started") {
+        osc.start();
+      }
+    });
+  };
+
+  return { attractors: attractorRef.current, update, startOscillators };
 }
