@@ -1,8 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as Tone from "tone";
 
-type Attractor = { x: number; y: number; z: number };
-const sigma = 10, rho = 28, beta = 8 / 3, dt = 0.01;
+type Attractor = { x: number; y: number; z: number; speed: number };
+const sigma = 10, rho = 28, beta = 8 / 3;
+
+// Helper function for random starting positions
+function getRandomPosition() {
+  return {
+    x: Math.random() * 40 - 20, // range: -20 to 20
+    y: Math.random() * 40 - 20,
+    z: Math.random() * 40 - 20,
+    speed: 0.002 // new default speed
+  };
+}
 
 function getQuantizedFreq(x: number, voice: 'bass' | 'alto' | 'soprano') {
   const scale = [0, 2, 3, 5, 7, 8, 11]; // Harmonic minor or Dorian feel
@@ -14,14 +24,20 @@ function getQuantizedFreq(x: number, voice: 'bass' | 'alto' | 'soprano') {
 
 export function useLorenzAttractor(count: number) {
   const attractorRef = useRef<Attractor[]>(
-    Array.from({ length: count }, () => ({
-      x: Math.random() * 2 - 1,
-      y: Math.random() * 2 - 1,
-      z: Math.random() * 2 - 1,
-    }))
+    Array.from({ length: count }, () => getRandomPosition())
   );
 
+  const [speeds, setSpeeds] = useState<number[]>(Array(count).fill(0.002));
   const synths = useRef<Tone.Oscillator[]>([]);
+  const speedsRef = useRef(speeds);  // Add ref to track speeds
+
+  // Keep speedsRef in sync with speeds state
+  useEffect(() => {
+    speedsRef.current = speeds;
+    attractorRef.current.forEach((attractor, index) => {
+      attractor.speed = speeds[index];
+    });
+  }, [speeds]);
 
   useEffect(() => {
     synths.current = attractorRef.current.map(() => {
@@ -33,14 +49,17 @@ export function useLorenzAttractor(count: number) {
     return () => synths.current.forEach((osc) => osc.dispose());
   }, []);
 
-  const update = () => {
+  const update = useCallback(() => {
     attractorRef.current.forEach((a, i) => {
       const dx = sigma * (a.y - a.x);
       const dy = a.x * (rho - a.z) - a.y;
       const dz = a.x * a.y - beta * a.z;
-      a.x += dx * dt;
-      a.y += dy * dt;
-      a.z += dz * dt;
+      
+      // Use current speed from ref
+      const speed = speedsRef.current[i];
+      a.x += dx * speed;
+      a.y += dy * speed;
+      a.z += dz * speed;
 
       const voice: 'bass' | 'alto' | 'soprano' = i === 0 ? 'bass' : i === 1 ? 'alto' : 'soprano';
       const freq = getQuantizedFreq(a.x, voice);
@@ -54,7 +73,7 @@ export function useLorenzAttractor(count: number) {
         }
       }
     });
-  };
+  }, []);  // Empty deps array since we're using refs
 
   const startOscillators = () => {
     synths.current.forEach((osc) => {
@@ -64,5 +83,17 @@ export function useLorenzAttractor(count: number) {
     });
   };
 
-  return { attractors: attractorRef.current, update, startOscillators };
+  const setSpeed = useCallback((index: number, speed: number) => {
+    const newSpeeds = [...speedsRef.current];
+    newSpeeds[index] = speed;
+    setSpeeds(newSpeeds);
+  }, []);
+
+  return { 
+    attractors: attractorRef.current, 
+    update, 
+    startOscillators,
+    speeds,
+    setSpeed 
+  };
 }

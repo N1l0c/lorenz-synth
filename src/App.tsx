@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
 import { useLorenzAttractor } from "./audio/useLorenzAttractor";
+import { SpeedControls } from './components/SpeedControls';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [started, setStarted] = useState(false);
 
-  const { attractors, update, startOscillators } = useLorenzAttractor(3); // Three attractors for CMY
+  const { attractors, update, startOscillators, speeds, setSpeed } = useLorenzAttractor(3); // Three attractors for CMY
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -46,7 +47,18 @@ export default function App() {
   }, [started]);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', margin: 0, padding: 0 }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      overflow: 'hidden', 
+      margin: 0, 
+      padding: 0,
+      position: 'fixed', // Prevent scrolling
+      top: 0,
+      left: 0,
+      background: 'black', // Ensure black background
+      boxSizing: 'border-box' // Include padding in width/height calculations
+    }}>
       {!started && (
         <div
           style={{
@@ -88,7 +100,19 @@ export default function App() {
           </button>
         </div>
       )}
-      <canvas ref={canvasRef} className="w-full h-full block" />
+      <canvas 
+        ref={canvasRef} 
+        className="w-full h-full block" 
+        style={{
+          display: 'block', // Remove potential inline gap
+          position: 'absolute',
+          top: 0,
+          left: 0
+        }}
+      />
+      {started && (
+        <SpeedControls speeds={speeds} setSpeed={setSpeed} />
+      )}
     </div>
   );
 }
